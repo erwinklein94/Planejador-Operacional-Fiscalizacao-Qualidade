@@ -1,0 +1,16 @@
+{
+  "name": "planejador-operacional-fiscalizacao-qualidade",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Planejamento operacional e gestão de risco da fiscalização de materiais",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.js",
+    "check": "node scripts/check.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
