@@ -9,3 +9,4 @@ config.local.js
 Thumbs.db
 .sites-runtime/
 artifacts/
+supabase/.temp/

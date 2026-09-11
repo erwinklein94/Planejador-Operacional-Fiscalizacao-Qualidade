@@ -1,0 +1,6 @@
+project_id = "sesgiivthqftoevdenhn"
+
+[functions.planner-api]
+# Authentication is verified in the function with auth.getUser(token), followed by a live role check.
+verify_jwt = false
+entrypoint = "./functions/planner-api/index.ts"

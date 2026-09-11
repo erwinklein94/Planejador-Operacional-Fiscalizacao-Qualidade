@@ -1,298 +1,77 @@
 import { createSeed, emptyState } from "../data/seed.js";
 import { uid } from "../utils/formatters.js";
-import { demandRisk, supplierRisk, DEFAULT_WEIGHTS } from "../utils/risk.js";
+import { demandRisk, supplierRisk } from "../utils/risk.js";
 import { allocationErrors, coverage, metrics } from "../utils/planning.js";
-import { isoDate, monday, validDate, addDays } from "../utils/dates.js";
-export const STORAGE_KEY = "fiscalizacao-qualidade:v1";
-export const COLLECTIONS = [
-  "inspectors",
-  "suppliers",
-  "materials",
-  "demands",
-  "allocations",
-  "availability",
-  "rncs",
-  "occurrences",
-  "riskHistory",
-  "coverageHistory",
-  "auditLog",
-];
+import { isoDate, monday, addDays } from "../utils/dates.js";
+import { COLLECTIONS, validateState } from "../utils/validation.js";
+import { supabaseAdapter } from "./supabaseService.js";
+export { COLLECTIONS, validateState } from "../utils/validation.js";
+const LEGACY_KEY = "fiscalizacao-qualidade:v1";
 const clone = (value) => structuredClone(value);
-const finite = (value, min, max) =>
-  typeof value === "number" &&
-  Number.isFinite(value) &&
-  value >= min &&
-  value <= max;
-const DEMAND_STATUSES = [
-  "Nova",
-  "Aguardando planejamento",
-  "Programada",
-  "Em andamento",
-  "Realizada",
-  "Reprogramada",
-  "Sem cobertura",
-  "Cancelada",
-];
-const RNC_STATUSES = [
-  "Aberta",
-  "Investigação",
-  "Aguardando fornecedor",
-  "Ação implementada",
-  "Verificação eficácia",
-  "Encerrada",
-  "Vencida",
-];
-export function validateState(state) {
-  if (!state || state.schemaVersion !== 1 || !state.settings)
-    throw new Error("Formato de backup incompatível (versão 1 necessária).");
-  for (const key of COLLECTIONS) {
-    if (!Array.isArray(state[key]) || state[key].length > 50000)
-      throw new Error(`Coleção inválida: ${key}.`);
-    const ids = new Set();
-    for (const record of state[key]) {
-      if (
-        !record ||
-        typeof record.id !== "string" ||
-        !/^[A-Za-z0-9_-]{1,100}$/.test(record.id) ||
-        ids.has(record.id)
-      )
-        throw new Error(`ID inválido ou duplicado em ${key}.`);
-      ids.add(record.id);
-    }
+export class StateService {
+  constructor(adapter = supabaseAdapter) {
+    this.adapter = adapter;
+    this.clear();
   }
-  if (
-    !finite(state.settings.hoursPerDay, 1, 12) ||
-    !finite(state.settings.coverageTarget, 0, 100)
-  )
-    throw new Error("Configuração de jornada ou cobertura inválida.");
-  const weights = state.settings.weights;
-  if (
-    !weights ||
-    Object.keys(DEFAULT_WEIGHTS).some((k) => !finite(weights[k], 0, 100)) ||
-    Object.keys(DEFAULT_WEIGHTS).reduce((s, k) => s + weights[k], 0) !== 100
-  )
-    throw new Error("Os sete pesos devem somar 100 pontos.");
-  const has = (key, id) => state[key].some((r) => r.id === id);
-  for (const key of ["inspectors", "suppliers", "materials"])
-    for (const record of state[key])
-      if (typeof record.active !== "boolean")
-        throw new Error("O campo ativo deve ser verdadeiro ou falso.");
-  const booleanFields = (record, keys) => {
-    if (
-      keys.some(
-        (k) => record[k] !== undefined && typeof record[k] !== "boolean",
-      )
-    )
-      throw new Error("Indicador booleano inválido.");
-  };
-  for (const supplier of state.suppliers) {
-    for (const [key, max] of [
-      ["documentationRisk", 10],
-      ["rejections", 1000],
-      ["divergences", 1000],
-      ["postReleaseIssues", 1000],
-    ])
-      if (supplier[key] !== undefined && !finite(supplier[key], 0, max))
-        throw new Error(`Componente de risco inválido: ${key}.`);
-    for (const key of ["lastAudit", "lastInspection"])
-      if (
-        supplier[key] &&
-        (!validDate(supplier[key]) || supplier[key] > isoDate())
-      )
-        throw new Error("Data de auditoria / inspeção inválida ou futura.");
-    booleanFields(supplier, ["isNew"]);
-    if (
-      supplier.regimeOverride &&
-      !["1", "2", "3"].includes(String(supplier.regimeOverride))
-    )
-      throw new Error("Regime inválido.");
-    if (supplier.regimeOverride && !supplier.regimeReason?.trim())
-      throw new Error("O ajuste manual de regime exige uma justificativa.");
-  }
-  for (const m of state.materials)
-    if (
-      typeof m.name !== "string" ||
-      !m.name.trim() ||
-      !finite(m.criticality, 0, 20)
-    )
-      throw new Error("Material inválido.");
-  for (const f of state.inspectors)
-    if (
-      typeof f.name !== "string" ||
-      !f.name.trim() ||
-      !finite(f.weeklyHours, 0, 60) ||
-      !Array.isArray(f.materialIds) ||
-      f.materialIds.some((id) => !has("materials", id))
-    )
-      throw new Error("Fiscal ou habilitação inválida.");
-  for (const s of state.suppliers)
-    if (
-      typeof s.name !== "string" ||
-      !s.name.trim() ||
-      !finite(s.baseRisk, 0, 100) ||
-      !Array.isArray(s.materialIds) ||
-      s.materialIds.some((id) => !has("materials", id))
-    )
-      throw new Error("Fornecedor inválido.");
-  for (const d of state.demands) {
-    if (!Number.isInteger(d.requiredHours * 4))
-      throw new Error("O esforço deve usar intervalos de 0,25 h (15 minutos).");
-    if (
-      !DEMAND_STATUSES.includes(d.status) ||
-      !finite(d.volume ?? 0, 0, 5) ||
-      (d.materialCriticality !== undefined &&
-        !finite(d.materialCriticality, 0, 20))
-    )
-      throw new Error("Status ou componente de prioridade inválido.");
-    booleanFields(d, [
-      "mandatory",
-      "holdPoint",
-      "surpriseAudit",
-      "recurrence",
-      "severeRecurrence",
-    ]);
-    if (
-      !has("suppliers", d.supplierId) ||
-      !has("materials", d.materialId) ||
-      (d.rncId && !has("rncs", d.rncId)) ||
-      typeof d.description !== "string" ||
-      !d.description.trim() ||
-      !validDate(d.requiredDate) ||
-      !validDate(d.deadline) ||
-      d.deadline < d.requiredDate ||
-      !finite(d.requiredHours, 0.25, 10000)
-    )
-      throw new Error(
-        "Demanda inválida. Verifique descrição, vínculos, datas e esforço.",
-      );
-    const supplier = state.suppliers.find((s) => s.id === d.supplierId);
-    if (!supplier.materialIds.includes(d.materialId))
-      throw new Error(
-        "O material da demanda não pertence ao fornecedor selecionado.",
-      );
-    const rnc = state.rncs.find((r) => r.id === d.rncId);
-    if (
-      rnc &&
-      (rnc.supplierId !== d.supplierId || rnc.materialId !== d.materialId)
-    )
-      throw new Error(
-        "A RNC relacionada deve pertencer ao mesmo fornecedor e material.",
-      );
-  }
-  for (const a of state.availability)
-    if (
-      !has("inspectors", a.inspectorId) ||
-      !validDate(a.date) ||
-      !finite(a.hours, 0, 12) ||
-      ![
-        "Disponível",
-        "Em inspeção",
-        "Deslocamento",
-        "Férias",
-        "Folga",
-        "Afastado",
-        "Administrativo",
-        "Indisponível",
-      ].includes(a.status)
-    )
-      throw new Error("Disponibilidade inválida.");
-  const slots = state.availability.map((a) => `${a.inspectorId}:${a.date}`);
-  if (new Set(slots).size !== slots.length)
-    throw new Error(
-      "Há disponibilidades duplicadas para o mesmo fiscal e dia.",
-    );
-  for (const r of state.rncs) {
-    if (
-      !has("suppliers", r.supplierId) ||
-      !has("materials", r.materialId) ||
-      !validDate(r.openedAt) ||
-      !validDate(r.deadline) ||
-      r.deadline < r.openedAt ||
-      !["Baixa", "Média", "Alta", "Crítica"].includes(r.severity) ||
-      !RNC_STATUSES.includes(r.status)
-    )
-      throw new Error("RNC inválida. Confira os vínculos e as datas.");
-    booleanFields(r, ["recurrence"]);
-    if (
-      r.status === "Encerrada" &&
-      (!validDate(r.closedAt) ||
-        r.closedAt < r.openedAt ||
-        !r.effectiveness?.trim())
-    )
-      throw new Error("Encerramento de RNC inválido.");
-  }
-  for (const a of state.allocations)
-    if (
-      !has("inspectors", a.inspectorId) ||
-      !has("demands", a.demandId) ||
-      !validDate(a.date) ||
-      !finite(a.hours, 0.25, 12) ||
-      !Number.isInteger(a.hours * 4) ||
-      !["Aprovada", "Cancelada"].includes(a.status)
-    )
-      throw new Error("Alocação inválida.");
-  const simulated = {
-    ...state,
-    demands: state.demands.map((d) =>
-      d.status === "Realizada" ? { ...d, status: "Programada" } : d,
-    ),
-    allocations: [],
-  };
-  for (const a of state.allocations) {
-    const d = state.demands.find((d) => d.id === a.demandId);
-    if (a.status === "Aprovada") {
-      if (d.status === "Cancelada")
-        throw new Error("Demanda cancelada não pode ter alocação aprovada.");
-      const errors = allocationErrors(a, simulated);
-      if (errors.length)
-        throw new Error(`Conflito na escala (${d.code}): ${errors[0]}`);
-    }
-    simulated.allocations.push(a);
-  }
-  for (const d of state.demands)
-    if (
-      d.status === "Realizada" &&
-      (!validDate(d.completedAt) ||
-        !d.outcome?.trim() ||
-        coverage(d, state, d.requiredDate).remaining > 0.001)
-    )
-      throw new Error(
-        "Fiscalização realizada exige resultado, data e cobertura integral na mesma semana.",
-      );
-  return true;
-}
-export class LocalStorageService {
-  constructor(storage = globalThis.localStorage) {
-    this.storage = storage;
+  clear() {
     this.state = null;
     this.revision = null;
+    this.profile = null;
+    this.saving = false;
+    this.pendingWrite = null;
+    this.generation = (this.generation || 0) + 1;
   }
-  async init() {
-    let raw;
-    try {
-      raw = this.storage.getItem(STORAGE_KEY);
-    } catch {
-      throw new Error(
-        "O navegador bloqueou o armazenamento local. Permita o armazenamento para usar o sistema.",
-      );
-    }
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        validateState(parsed);
-        this.state = parsed;
-        this.revision = raw;
-      } catch (error) {
-        throw new Error(
-          `Não foi possível abrir os dados salvos. Eles foram preservados. ${error.message}`,
-        );
+  async init(page = "dashboard") {
+    return this.refresh(page);
+  }
+  async refresh(page = "dashboard") {
+    const generation = this.generation;
+    if (this.pendingWrite) await this.pendingWrite.catch(() => {});
+    const result = await this.adapter.read(page);
+    if (generation !== this.generation) throw new Error("Sessão encerrada.");
+    if (!result.profile?.active) throw new Error("Conta sem acesso ativo.");
+    this.profile = result.profile;
+    this.revision = result.revision;
+    this.state = result.payload || emptyState();
+    validateState(this.state);
+    if (!result.payload && this.profile.role === "editor") {
+      const legacy = this.legacyData();
+      if (legacy) {
+        validateState(legacy);
+        await this.persist(legacy);
       }
-    } else {
-      const state = createSeed();
-      validateState(state);
-      this.persist(state);
     }
     return this.getState();
+  }
+  legacyData() {
+    // Migration only; a browser storage restriction must not block cloud access.
+    let raw;
+    try {
+      raw = globalThis.localStorage?.getItem(LEGACY_KEY);
+    } catch {
+      return null;
+    }
+    if (!raw) return null;
+    try {
+      const value = JSON.parse(raw);
+      validateState(value);
+      return value;
+    } catch {
+      throw new Error(
+        "Os dados antigos deste navegador precisam de revisão antes da importação. Exporte o backup da versão anterior.",
+      );
+    }
+  }
+  async importLegacy() {
+    this.assertEditor();
+    const legacy = this.legacyData();
+    if (!legacy)
+      throw new Error("Não há base da versão anterior salva neste navegador.");
+    return this.importData(JSON.stringify(legacy));
+  }
+  assertEditor() {
+    if (!this.state || this.profile?.role !== "editor" || !this.profile?.active)
+      throw new Error("Somente o editor pode alterar os dados.");
   }
   async getState() {
     return clone(this.state);
@@ -302,29 +81,27 @@ export class LocalStorageService {
       throw new Error("Coleção desconhecida.");
     return clone(this.state[collection]);
   }
-  persist(state) {
-    let raw;
+  async persist(state) {
+    this.assertEditor();
+    if (this.saving) throw new Error("Aguarde o salvamento em andamento.");
+    validateState(state);
+    this.saving = true;
+    const generation = this.generation;
     try {
-      raw = this.storage.getItem(STORAGE_KEY);
-    } catch {
-      throw new Error("Armazenamento indisponível.");
+      this.pendingWrite = this.adapter.write(state, this.revision);
+      const result = await this.pendingWrite;
+      if (generation !== this.generation) throw new Error("Sessão encerrada.");
+      this.state = result.payload;
+      this.revision = result.revision;
+    } finally {
+      if (generation === this.generation) {
+        this.saving = false;
+        this.pendingWrite = null;
+      }
     }
-    if (this.revision !== null && raw !== this.revision)
-      throw new Error(
-        "Os dados mudaram em outra aba. Recarregue esta página antes de salvar.",
-      );
-    const serialized = JSON.stringify(state);
-    try {
-      this.storage.setItem(STORAGE_KEY, serialized);
-    } catch {
-      throw new Error(
-        "Não foi possível salvar: armazenamento indisponível ou cheio. Exporte um backup.",
-      );
-    }
-    this.state = state;
-    this.revision = serialized;
   }
   async transact(type, record, change, mutate) {
+    this.assertEditor();
     const next = clone(this.state);
     await mutate(next);
     validateState(next);
@@ -334,7 +111,7 @@ export class LocalStorageService {
       type,
       record,
       change,
-      user: next.settings.userName || "Planejamento local",
+      user: this.profile.full_name,
     });
     for (const supplier of next.suppliers) {
       const score = supplierRisk(supplier, next).score;
@@ -359,10 +136,10 @@ export class LocalStorageService {
           type: "Prioridade",
           record: demand.code,
           change: `Score ${demandRisk(old, this.state).score} → ${score}`,
-          user: next.settings.userName,
+          user: this.profile.full_name,
         });
     }
-    this.persist(next);
+    await this.persist(next);
     return this.getState();
   }
   async save(collection, record) {
@@ -607,15 +384,15 @@ export class LocalStorageService {
       type: "Importação",
       record: "Backup",
       change: "Base restaurada a partir de backup validado",
-      user: data.settings.userName,
+      user: this.profile.full_name,
     });
-    this.persist(data);
+    await this.persist(data);
     return this.getState();
   }
   async reset(demo = false) {
     const next = demo ? createSeed() : emptyState();
-    this.persist(next);
+    await this.persist(next);
     return this.getState();
   }
 }
-export const storageService = new LocalStorageService();
+export const storageService = new StateService();

@@ -9,24 +9,42 @@ import {
   inspectorCapacity,
 } from "../utils/planning.js";
 import { riskLevel, demandRisk, supplierRisk } from "../utils/risk.js";
-import {
-  LocalStorageService,
-  STORAGE_KEY,
-  validateState,
-} from "../services/storageService.js";
+import { StateService, validateState } from "../services/storageService.js";
 import { monday, addDays, weekNumber, validDate } from "../utils/dates.js";
 const TODAY = "2026-09-11";
 const seed = () => createSeed(TODAY);
 function memory() {
-  const map = new Map();
   return {
-    getItem: (key) => map.get(key) ?? null,
-    setItem: (key, value) => map.set(key, value),
+    payload: createSeed(),
+    revision: 0,
+    async read() {
+      return {
+        payload: structuredClone(this.payload),
+        revision: this.revision,
+        profile: {
+          id: "editor",
+          role: "editor",
+          active: true,
+          full_name: "Editor teste",
+        },
+      };
+    },
+    async write(payload, revision) {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      if (revision !== this.revision)
+        throw new Error("Os dados mudaram em outra sessão.");
+      this.payload = structuredClone(payload);
+      this.revision++;
+      return {
+        payload: structuredClone(this.payload),
+        revision: this.revision,
+      };
+    },
   };
 }
 async function service() {
   const store = memory();
-  const s = new LocalStorageService(store);
+  const s = new StateService(store);
   await s.init();
   await s.importData(JSON.stringify(seed()));
   return s;
@@ -218,24 +236,27 @@ test("reprogramação mantém alocações canceladas e registra motivo", async (
     2,
   );
 });
-test("persistência sobrevive a nova instância e detecta gravação por outra aba", async () => {
+test("persistência sobrevive a nova instância e detecta gravação por outra sessão", async () => {
   const store = memory();
-  const db = new LocalStorageService(store);
+  const db = new StateService(store);
   await db.init();
   const s = await db.getState();
   await db.save("materials", { ...s.materials[0], name: "AMV atualizado" });
-  const reopened = new LocalStorageService(store);
+  const reopened = new StateService(store);
   assert.equal((await reopened.init()).materials[0].name, "AMV atualizado");
-  store.setItem(STORAGE_KEY, "{}");
-  await assert.rejects(db.saveSettings({ userName: "Outra aba" }), /outra aba/);
+  store.revision++;
+  await assert.rejects(
+    db.saveSettings({ userName: "Outra aba" }),
+    /outra sessão/,
+  );
 });
 test("falha de escrita não altera o estado em memória", async () => {
   const store = memory();
-  const db = new LocalStorageService(store);
+  const db = new StateService(store);
   await db.init();
   const previous = JSON.stringify(await db.getState());
-  store.setItem = () => {
-    throw new Error("quota");
+  store.write = async () => {
+    throw new Error("Não foi possível salvar");
   };
   await assert.rejects(db.saveSettings({ userName: "Teste" }), /salvar/);
   assert.equal(JSON.stringify(await db.getState()), previous);

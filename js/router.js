@@ -11,6 +11,9 @@ export const ROUTES = [
   "rnc",
   "historico",
   "configuracoes",
+  "perfil",
+  "auditoria",
+  "login",
 ];
 export function readRoute() {
   const [path, query = ""] = (location.hash || "#/dashboard")

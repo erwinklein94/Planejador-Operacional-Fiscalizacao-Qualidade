@@ -9,6 +9,7 @@ for (const path of [
   "utils",
   "data",
   "assets",
+  "vendor",
 ])
   await cp(path, `dist/${path}`, { recursive: true });
 await writeFile("dist/.nojekyll", "");
