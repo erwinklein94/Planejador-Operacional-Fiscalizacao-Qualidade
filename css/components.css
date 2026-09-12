@@ -759,6 +759,9 @@ dialog .modal-subtitle {
   gap: 7px;
   font-size: 13px;
 }
+.field[hidden] {
+  display: none;
+}
 .field-label-row,
 .label-with-help {
   display: inline-flex;

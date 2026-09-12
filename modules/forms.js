@@ -139,12 +139,12 @@ export function openEdit(ctx, collection, id, save) {
       field("registration", "Matrícula"),
       field("company", "Empresa"),
       field("employment", "Vínculo", "select", {
-        options: ["Próprio", "Terceiro"],
+        options: ["Próprio", "Terceiro", "Não informado no Excel"],
         required: true,
       }),
-      field("base", "Base", "text", { required: true }),
-      field("city", "Cidade", "text", { required: true }),
-      field("uf", "UF", "select", { options: STATES, required: true }),
+      field("base", "Base"),
+      field("city", "Cidade"),
+      field("uf", "UF", "select", { options: STATES }),
       field("", "Escala de trabalho", "section"),
       field("scheduleType", "Tipo de escala", "select", {
         options: [
