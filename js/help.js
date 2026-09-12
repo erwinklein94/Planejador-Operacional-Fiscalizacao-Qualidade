@@ -49,7 +49,7 @@ export const FIELD_HELP = Object.freeze({
   "Auditoria surpresa": "Indica uma verificação sem aviso prévio. Quando não há obrigatoriedade ou hold point, acrescenta parte do componente correspondente ao score.",
   Reincidência: "Indica repetição de um desvio ou problema. A marcação aumenta o risco e ajuda a destacar casos que exigem acompanhamento.",
   "Reincidência grave": "Indica repetição com impacto elevado. O score final da demanda passa a ter piso de 70 pontos.",
-  "Status operacional": "Etapa atual da demanda. O status controla como ela aparece no planejamento e preserva situações como reprogramação, realização e cancelamento.",
+  "Status operacional": "Etapa atual da demanda. “Escala histórica” preserva um planejamento importado sem afirmar que a fiscalização foi executada; os demais estados acompanham programação, execução, reprogramação e cancelamento.",
   "Motivo da não execução": "Motivo pelo qual a fiscalização não ocorreu. “Falta de capacidade” é usado no cálculo da demanda reprimida efetiva ao registrar a fotografia semanal.",
   "Resultado da fiscalização": "Conclusão registrada após a execução, incluindo liberações, restrições, desvios ou encaminhamentos.",
   "Justificativa da alteração": "Explica por que uma informação relevante foi modificada. Serve para manter a decisão compreensível no histórico.",

@@ -39,7 +39,7 @@ export function coreMetrics(m, state) {
   return `<div class="metrics-grid">${metricCard("Capacidade disponível", num(m.capacity / h), "fiscal-dias", `${state.inspectors.filter((i) => i.active).length} fiscais ativos · jornada de ${h} h`, "users")}${metricCard("Demanda de fiscalização", num(m.required / h), "fiscal-dias", "Esforço necessário nesta semana", "clipboard")}${metricCard("Déficit de capacidade", num(m.deficit / h), "fiscal-dias", m.deficit ? "Demanda acima da capacidade da equipe" : "Capacidade total suficiente", "alert", m.deficit ? "alert-card" : "")}${metricCard("Cobertura programada", m.coverage === null ? "—" : pct(m.coverage), "", `${num(m.covered / h)} de ${num(m.required / h)} fiscal-dias alocados`, "shield", "dark")}</div>`;
 }
 export function demandStatus(d, state, week) {
-  if (["Realizada", "Cancelada"].includes(d.status))
+  if (["Realizada", "Cancelada", "Escala histórica"].includes(d.status))
     return badge(d.status, d.status === "Realizada" ? "success" : "neutral");
   const c = coverage(d, state, week);
   return c.covered <= 0

@@ -100,6 +100,7 @@ export const DEMAND_STATUSES = [
   "Programada",
   "Em andamento",
   "Realizada",
+  "Escala histórica",
   "Reprogramada",
   "Sem cobertura",
   "Cancelada",

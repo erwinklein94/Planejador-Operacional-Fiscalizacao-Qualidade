@@ -95,7 +95,7 @@ export function renderRisk(ctx) {
   const records = s.demands
     .filter(
       (d) =>
-        !["Cancelada", "Realizada"].includes(d.status) &&
+        !["Cancelada", "Realizada", "Escala histórica"].includes(d.status) &&
         inWeek(d.requiredDate, ctx.week),
     )
     .filter(

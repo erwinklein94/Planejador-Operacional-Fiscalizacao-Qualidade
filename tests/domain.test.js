@@ -7,6 +7,7 @@ import {
   allocationErrors,
   suggestAllocation,
   inspectorCapacity,
+  alerts,
 } from "../utils/planning.js";
 import { riskLevel, demandRisk, supplierRisk } from "../utils/risk.js";
 import { StateService, validateState } from "../services/storageService.js";
@@ -93,6 +94,32 @@ test("sem demanda evita divisão por zero; cancelada sai dos indicadores", () =>
   assert.equal(m.deficit, 0);
   s.demands.forEach((d) => (d.status = "Cancelada"));
   assert.equal(metrics(s, s.seedWeek).required, 0);
+});
+
+test("escala histórica permanece consultável sem gerar alerta vencido", () => {
+  const s = createSeed(TODAY);
+  const historical = s.demands[0];
+  const allocation = s.allocations.find(
+    (item) => item.demandId === historical.id,
+  );
+  s.demands
+    .filter((demand) =>
+      s.allocations.some(
+        (item) =>
+          item.demandId === demand.id &&
+          item.inspectorId === allocation.inspectorId,
+      ),
+    )
+    .forEach((demand) => (demand.status = "Escala histórica"));
+  s.inspectors.find((item) => item.id === allocation.inspectorId).active = false;
+  assert.equal(validateState(s), true);
+  s.allocations = s.allocations.filter(
+    (item) => item.demandId !== historical.id,
+  );
+  assert.equal(
+    alerts(s, s.seedWeek).some((item) => item.demandId === historical.id),
+    false,
+  );
 });
 test("férias e administrativo descontam capacidade sem descontar inspeções duas vezes", () => {
   const s = seed();

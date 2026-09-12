@@ -230,7 +230,10 @@ export function alerts(state, week) {
   const m = metrics(state, week);
   const today = isoDate();
   for (const d of m.uncoveredDemands)
-    if (d.holdPoint || demandRisk(d, state).score >= 70)
+    if (
+      d.status !== "Escala histórica" &&
+      (d.holdPoint || demandRisk(d, state).score >= 70)
+    )
       result.push({
         tone: "danger",
         title: d.holdPoint
@@ -253,7 +256,7 @@ export function alerts(state, week) {
     .filter(
       (d) =>
         d.deadline < today &&
-        !["Realizada", "Cancelada"].includes(d.status) &&
+        !["Realizada", "Cancelada", "Escala histórica"].includes(d.status) &&
         !inWeek(d.requiredDate, week),
     )
     .forEach((d) =>

@@ -25,6 +25,7 @@ const DEMAND_STATUSES = [
   "Programada",
   "Em andamento",
   "Realizada",
+  "Escala histórica",
   "Reprogramada",
   "Sem cobertura",
   "Cancelada",
@@ -239,7 +240,18 @@ export function validateState(state) {
     if (a.status === "Aprovada") {
       if (d.status === "Cancelada")
         throw new Error("Demanda cancelada não pode ter alocação aprovada.");
-      const errors = allocationErrors(a, simulated);
+      const validationState =
+        d.status === "Escala histórica"
+          ? {
+              ...simulated,
+              inspectors: simulated.inspectors.map((inspector) =>
+                inspector.id === a.inspectorId
+                  ? { ...inspector, active: true }
+                  : inspector,
+              ),
+            }
+          : simulated;
+      const errors = allocationErrors(a, validationState);
       if (errors.length)
         throw new Error(`Conflito na escala (${d.code}): ${errors[0]}`);
     }
