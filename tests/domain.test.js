@@ -7,6 +7,8 @@ import {
   allocationErrors,
   suggestAllocation,
   inspectorCapacity,
+  dailyCapacity,
+  isScheduledWorkday,
   alerts,
 } from "../utils/planning.js";
 import { riskLevel, demandRisk, supplierRisk } from "../utils/risk.js";
@@ -126,6 +128,40 @@ test("férias e administrativo descontam capacidade sem descontar inspeções du
   assert.equal(inspectorCapacity(s.inspectors[0], s.seedWeek, s), 40);
   assert.equal(inspectorCapacity(s.inspectors[4], s.seedWeek, s), 32);
   assert.equal(inspectorCapacity(s.inspectors[5], s.seedWeek, s), 0);
+});
+test("calendário semanal inclui sábado e respeita dias fixos de cada fiscal", () => {
+  const s = seed();
+  const fiscal = s.inspectors[0];
+  fiscal.workWeekdays = ["1", "2", "3", "4", "5", "6"];
+  fiscal.dailyHours = 8;
+  fiscal.weeklyHours = 48;
+  assert.equal(isScheduledWorkday(fiscal, addDays(s.seedWeek, 5)), true);
+  assert.equal(dailyCapacity(fiscal, addDays(s.seedWeek, 5), s), 8);
+  assert.equal(inspectorCapacity(fiscal, s.seedWeek, s), 48);
+});
+test("escala 10x4 calcula trabalho e folga pela data inicial do ciclo", () => {
+  const s = seed();
+  const fiscal = s.inspectors[0];
+  Object.assign(fiscal, {
+    scheduleType: "cycle",
+    dailyHours: 8,
+    cycleWorkDays: 10,
+    cycleOffDays: 4,
+    cycleStartDate: s.seedWeek,
+    weeklyHours: 48,
+  });
+  assert.equal(isScheduledWorkday(fiscal, addDays(s.seedWeek, 9)), true);
+  assert.equal(isScheduledWorkday(fiscal, addDays(s.seedWeek, 10)), false);
+  assert.equal(isScheduledWorkday(fiscal, addDays(s.seedWeek, 14)), true);
+  assert.equal(inspectorCapacity(fiscal, addDays(s.seedWeek, 7), s), 24);
+  s.availability.push({
+    id: "extra-sabado",
+    inspectorId: fiscal.id,
+    date: addDays(s.seedWeek, 12),
+    status: "Disponível",
+    hours: 6,
+  });
+  assert.equal(dailyCapacity(fiscal, addDays(s.seedWeek, 12), s), 6);
 });
 test("fronteiras de score e pisos transparentes", () => {
   assert.deepEqual(
@@ -311,11 +347,12 @@ test("sugestões não oferecem datas passadas e respeitam prazo", () => {
   );
   assert.equal(suggestAllocation(s.demands[18], s, "2026-09-12").length, 0);
 });
-test("jornada de 36 h gera sugestões aprováveis em parcelas de 15 minutos", async () => {
+test("jornada diária individual gera sugestões aprováveis em parcelas de 15 minutos", async () => {
   const db = await service();
   const s = seed();
   s.allocations = [];
-  s.inspectors[1].weeklyHours = 36;
+  s.inspectors[1].dailyHours = 7.25;
+  s.inspectors[1].weeklyHours = 36.25;
   s.demands[18].requiredHours = 14.5;
   await db.importData(JSON.stringify(s));
   const choice = suggestAllocation(s.demands[18], s, s.seedWeek).find(
@@ -323,7 +360,7 @@ test("jornada de 36 h gera sugestões aprováveis em parcelas de 15 minutos", as
   );
   assert.deepEqual(
     choice.slots.map((a) => a.hours),
-    [7, 7, 0.5],
+    [7.25, 7.25],
   );
   await db.approveAllocations(choice.slots);
   assert.equal(

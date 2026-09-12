@@ -111,8 +111,9 @@ export function manualAllocation(ctx, options, save) {
       field("hours", "Horas de fiscalização", "number", {
         required: true,
         min: 0.25,
-        max: s.settings.hoursPerDay,
+        max: 12,
         step: ".25",
+        help: "O limite efetivo usa a jornada e a escala cadastradas para o fiscal escolhido.",
       }),
     ],
     {
@@ -120,7 +121,7 @@ export function manualAllocation(ctx, options, save) {
       inspectorId: options.fiscal || "",
       date: options.date || (chosen ? monday(chosen.requiredDate) : ctx.week),
       hours: Math.min(
-        s.settings.hoursPerDay,
+        12,
         chosen ? coverage(chosen, s).remaining : 8,
       ),
     },
@@ -152,9 +153,9 @@ export function availabilityForm(ctx, id, save) {
     field("hours", "Horas disponíveis para fiscalização", "number", {
       required: true,
       min: 0,
-      max: s.settings.hoursPerDay,
-      step: ".5",
-      help: "Ausências, administrativo e deslocamento contam como zero.",
+      max: 12,
+      step: ".25",
+      help: "Este registro substitui excepcionalmente a escala do fiscal nessa data. Ausências, administrativo e deslocamento contam como zero.",
     }),
     field("notes", "Observações", "textarea", { full: true }),
   ];
@@ -166,7 +167,7 @@ export function availabilityForm(ctx, id, save) {
       inspectorId: id || s.inspectors[0]?.id || "",
       date: ctx.week,
       status: "Disponível",
-      hours: s.settings.hoursPerDay,
+      hours: s.inspectors.find((f) => f.id === id)?.dailyHours || s.settings.hoursPerDay,
       notes: "",
     },
     (record) => {
@@ -184,7 +185,9 @@ export function availabilityForm(ctx, id, save) {
     );
     dialog.querySelector("[name=status]").value = item?.status || "Disponível";
     dialog.querySelector("[name=hours]").value =
-      item?.hours ?? s.settings.hoursPerDay;
+      item?.hours ??
+      s.inspectors.find((f) => f.id === fiscal)?.dailyHours ??
+      s.settings.hoursPerDay;
     dialog.querySelector("[name=notes]").value = item?.notes || "";
   }
   dialog.querySelector("[name=inspectorId]").onchange = fillExisting;

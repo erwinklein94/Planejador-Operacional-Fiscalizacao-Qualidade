@@ -5,6 +5,7 @@ import {
   coverage,
   inspectorCapacity,
   inspectorUsed,
+  inspectorScheduleLabel,
   liveAllocations,
 } from "../utils/planning.js";
 import {
@@ -126,7 +127,7 @@ export function renderInspectors(ctx) {
     .map((f) => {
       const capacity = inspectorCapacity(f, ctx.week, s);
       const used = inspectorUsed(f, ctx.week, s);
-      return `<article class="panel inspector-card"><div class="card-heading">${avatar(f.name)}<div><h3>${esc(f.name)}</h3><small>${esc(f.base)} · ${esc(f.uf)}</small></div>${badge(f.active ? "Ativo" : "Inativo", f.active ? "success" : "neutral")}</div><div class="card-tags">${f.materialIds.map((id) => badge(entityName(s, "materials", id), "info")).join("")}</div><div class="card-line"><span class="muted">Carga semanal utilizada</span><strong>${num(used)} / ${num(capacity)} h</strong></div>${progress(capacity ? (used / capacity) * 100 : 0)}<div class="card-line"><span class="muted">Disponibilidade restante</span><strong>${num(Math.max(0, capacity - used) / s.settings.hoursPerDay)} fiscal-dias</strong></div><div class="card-footer"><span class="muted">${esc(f.employment)}</span><div class="flex">${button("Agenda", "availability", "small ghost", "", `data-id="${f.id}"`)}${button("Editar", "edit-inspectors", "small", "edit", `data-id="${f.id}"`)}</div></div></article>`;
+      return `<article class="panel inspector-card"><div class="card-heading">${avatar(f.name)}<div><h3>${esc(f.name)}</h3><small>${esc(f.base)} · ${esc(f.uf)}</small></div>${badge(f.active ? "Ativo" : "Inativo", f.active ? "success" : "neutral")}</div><div class="card-tags">${f.materialIds.map((id) => badge(entityName(s, "materials", id), "info")).join("")}</div><div class="card-line"><span class="muted">Escala de trabalho</span><strong>${esc(inspectorScheduleLabel(f, s))}</strong></div><div class="card-line"><span class="muted">Carga utilizada nesta semana</span><strong>${num(used)} / ${num(capacity)} h</strong></div>${progress(capacity ? (used / capacity) * 100 : 0)}<div class="card-line"><span class="muted">Disponibilidade restante</span><strong>${num(Math.max(0, capacity - used) / s.settings.hoursPerDay)} fiscal-dias</strong></div><div class="card-footer"><span class="muted">${esc(f.employment)}</span><div class="flex">${button("Agenda", "availability", "small ghost", "", `data-id="${f.id}"`)}${button("Editar", "edit-inspectors", "small", "edit", `data-id="${f.id}"`)}</div></div></article>`;
     })
     .join(
       "",

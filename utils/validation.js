@@ -117,11 +117,40 @@ export function validateState(state) {
     if (
       typeof f.name !== "string" ||
       !f.name.trim() ||
-      !finite(f.weeklyHours, 0, 60) ||
+      !finite(f.weeklyHours, 0, 72) ||
       !Array.isArray(f.materialIds) ||
       f.materialIds.some((id) => !has("materials", id))
     )
       throw new Error("Fiscal ou habilitação inválida.");
+  for (const f of state.inspectors) {
+    const scheduleType = f.scheduleType || "weekly";
+    const dailyHours = f.dailyHours ?? f.weeklyHours / 5;
+    if (
+      !["weekly", "cycle"].includes(scheduleType) ||
+      !finite(dailyHours, 0.25, 12) ||
+      !Number.isInteger(dailyHours * 4)
+    )
+      throw new Error("Tipo de escala ou jornada diária inválida.");
+    if (scheduleType === "weekly") {
+      const weekdays = f.workWeekdays || [1, 2, 3, 4, 5];
+      if (
+        !Array.isArray(weekdays) ||
+        !weekdays.length ||
+        new Set(weekdays.map(Number)).size !== weekdays.length ||
+        weekdays.some((day) => !Number.isInteger(Number(day)) || Number(day) < 1 || Number(day) > 6)
+      )
+        throw new Error("Selecione dias de trabalho válidos entre segunda-feira e sábado.");
+    } else if (
+      !Number.isInteger(f.cycleWorkDays) ||
+      f.cycleWorkDays < 1 ||
+      f.cycleWorkDays > 30 ||
+      !Number.isInteger(f.cycleOffDays) ||
+      f.cycleOffDays < 1 ||
+      f.cycleOffDays > 30 ||
+      !validDate(f.cycleStartDate)
+    )
+      throw new Error("Informe os dias de trabalho, de folga e a data inicial do ciclo.");
+  }
   for (const s of state.suppliers)
     if (
       typeof s.name !== "string" ||

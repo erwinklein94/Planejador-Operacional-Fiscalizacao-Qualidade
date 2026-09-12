@@ -11,7 +11,7 @@ export function monday(value = isoDate()) {
   const d = new Date(`${value}T12:00:00`);
   return addDays(value, -((d.getDay() + 6) % 7));
 }
-export function weekDays(value, length = 5) {
+export function weekDays(value, length = 6) {
   const start = monday(value);
   return Array.from({ length }, (_, i) => addDays(start, i));
 }
@@ -39,7 +39,7 @@ export function dateLabel(value, options = {}) {
     : "—";
 }
 export function weekLabel(value) {
-  return `${dateLabel(monday(value))} — ${dateLabel(addDays(monday(value), 4), { year: "numeric" })}`;
+  return `${dateLabel(monday(value))} — ${dateLabel(addDays(monday(value), 5), { year: "numeric" })}`;
 }
 export function validDate(value) {
   return (

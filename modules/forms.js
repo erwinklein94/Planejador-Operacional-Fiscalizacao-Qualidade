@@ -123,6 +123,12 @@ export function openEdit(ctx, collection, id, save) {
       active: true,
       materialIds: [],
       weeklyHours: 40,
+      scheduleType: "weekly",
+      workWeekdays: ["1", "2", "3", "4", "5"],
+      dailyHours: 8,
+      cycleWorkDays: 10,
+      cycleOffDays: 4,
+      cycleStartDate: isoDate(),
       registration: "",
       skills: "",
       notes: "",
@@ -139,11 +145,47 @@ export function openEdit(ctx, collection, id, save) {
       field("base", "Base", "text", { required: true }),
       field("city", "Cidade", "text", { required: true }),
       field("uf", "UF", "select", { options: STATES, required: true }),
-      field("weeklyHours", "Carga semanal contratada (h)", "number", {
-        min: 0,
-        max: 60,
-        step: ".5",
+      field("", "Escala de trabalho", "section"),
+      field("scheduleType", "Tipo de escala", "select", {
+        options: [
+          ["weekly", "Dias fixos da semana"],
+          ["cycle", "Ciclo de trabalho e folga"],
+        ],
         required: true,
+      }),
+      field("dailyHours", "Jornada diária (h)", "number", {
+        min: 0.25,
+        max: 12,
+        step: ".25",
+        required: true,
+      }),
+      field("workWeekdays", "Dias habituais de trabalho", "multiple", {
+        options: [
+          ["1", "Segunda-feira"],
+          ["2", "Terça-feira"],
+          ["3", "Quarta-feira"],
+          ["4", "Quinta-feira"],
+          ["5", "Sexta-feira"],
+          ["6", "Sábado"],
+        ],
+        required: true,
+        full: true,
+        help: "Usado na escala de dias fixos. Use Ctrl/Cmd para selecionar vários dias.",
+      }),
+      field("cycleWorkDays", "Dias consecutivos de trabalho", "number", {
+        min: 1,
+        max: 30,
+        required: true,
+      }),
+      field("cycleOffDays", "Dias consecutivos de folga", "number", {
+        min: 1,
+        max: 30,
+        required: true,
+      }),
+      field("cycleStartDate", "Início do ciclo de trabalho", "date", {
+        required: true,
+        full: true,
+        help: "Informe uma data conhecida como o primeiro dia de trabalho do ciclo.",
       }),
       field("materialIds", "Materiais habilitados", "multiple", {
         options: materialOptions,
@@ -423,14 +465,39 @@ export function openEdit(ctx, collection, id, save) {
       }),
     ];
   } else throw new Error("Cadastro desconhecido.");
+  const persist =
+    collection === "inspectors"
+      ? (record) => {
+          record.weeklyHours =
+            record.dailyHours *
+            (record.scheduleType === "weekly"
+              ? record.workWeekdays.length
+              : Math.min(6, record.cycleWorkDays));
+          return save(record);
+        }
+      : save;
   const dialog = showForm(
     `${old ? "Editar" : "Cadastrar"} ${title}`,
     old?.code ||
       "Os campos com * são obrigatórios. As alterações ficam registradas no histórico.",
     fields,
     values,
-    save,
+    persist,
   );
+  if (collection === "inspectors") {
+    const scheduleType = dialog.querySelector("[name=scheduleType]");
+    const weeklyFields = ["workWeekdays"];
+    const cycleFields = ["cycleWorkDays", "cycleOffDays", "cycleStartDate"];
+    const toggleScheduleFields = () => {
+      const cycle = scheduleType.value === "cycle";
+      for (const key of weeklyFields)
+        dialog.querySelector(`[name=${key}]`).closest(".field").hidden = cycle;
+      for (const key of cycleFields)
+        dialog.querySelector(`[name=${key}]`).closest(".field").hidden = !cycle;
+    };
+    scheduleType.addEventListener("change", toggleScheduleFields);
+    toggleScheduleFields();
+  }
   if (collection === "demands") {
     dialog
       .querySelector("[name=supplierId]")

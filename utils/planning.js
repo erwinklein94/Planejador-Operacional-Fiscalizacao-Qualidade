@@ -1,4 +1,12 @@
-import { addDays, inWeek, isoDate, monday, weekDays } from "./dates.js";
+import {
+  addDays,
+  daysBetween,
+  inWeek,
+  isoDate,
+  monday,
+  validDate,
+  weekDays,
+} from "./dates.js";
 import { demandRisk } from "./risk.js";
 export const BLOCKED = [
   "Férias",
@@ -16,27 +24,59 @@ export const liveAllocations = (state) =>
         (d) => d.id === a.demandId && d.status !== "Cancelada",
       ),
   );
+const DEFAULT_WORKDAYS = [1, 2, 3, 4, 5];
+const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+export function inspectorDailyHours(inspector, state) {
+  const configured = Number(inspector?.dailyHours);
+  if (Number.isFinite(configured)) return configured;
+  const legacy = Number(inspector?.weeklyHours) / 5;
+  return Number.isFinite(legacy) ? legacy : Number(state.settings.hoursPerDay);
+}
+export function isScheduledWorkday(inspector, date) {
+  if (inspector?.scheduleType === "cycle") {
+    const work = Number(inspector.cycleWorkDays);
+    const off = Number(inspector.cycleOffDays);
+    if (
+      Number.isInteger(work) &&
+      work > 0 &&
+      Number.isInteger(off) &&
+      off > 0 &&
+      validDate(inspector.cycleStartDate)
+    ) {
+      const period = work + off;
+      const position = ((daysBetween(inspector.cycleStartDate, date) % period) + period) % period;
+      return position < work;
+    }
+  }
+  const weekdays = Array.isArray(inspector?.workWeekdays)
+    ? inspector.workWeekdays.map(Number)
+    : DEFAULT_WORKDAYS;
+  return weekdays.includes(new Date(`${date}T12:00:00`).getDay());
+}
+export function inspectorScheduleLabel(inspector, state) {
+  const hours = inspectorDailyHours(inspector, state);
+  if (inspector?.scheduleType === "cycle")
+    return `${inspector.cycleWorkDays} dias de trabalho / ${inspector.cycleOffDays} de folga · ${hours} h/dia`;
+  const weekdays = Array.isArray(inspector?.workWeekdays)
+    ? inspector.workWeekdays.map(Number)
+    : DEFAULT_WORKDAYS;
+  return `${weekdays.map((day) => DAY_LABELS[day]).join(", ")} · ${hours} h/dia`;
+}
 export function dailyCapacity(inspector, date, state) {
   if (!inspector?.active || !weekDays(date).includes(date)) return 0;
   const override = state.availability.find(
     (a) => a.inspectorId === inspector.id && a.date === date,
   );
   if (override && BLOCKED.includes(override.status)) return 0;
-  return Math.max(
-    0,
-    Math.min(
-      state.settings.hoursPerDay,
-      override ? Number(override.hours) : Number(inspector.weeklyHours) / 5,
-    ),
-  );
+  if (override) return Math.max(0, Math.min(12, Number(override.hours)));
+  return isScheduledWorkday(inspector, date)
+    ? Math.max(0, Math.min(12, inspectorDailyHours(inspector, state)))
+    : 0;
 }
 export function inspectorCapacity(inspector, week, state) {
-  return Math.min(
-    Number(inspector.weeklyHours),
-    weekDays(week).reduce(
-      (sum, day) => sum + dailyCapacity(inspector, day, state),
-      0,
-    ),
+  return weekDays(week).reduce(
+    (sum, day) => sum + dailyCapacity(inspector, day, state),
+    0,
   );
 }
 export function inspectorUsed(inspector, week, state) {

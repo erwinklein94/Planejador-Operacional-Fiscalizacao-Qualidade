@@ -590,9 +590,9 @@ textarea {
   overflow: auto;
 }
 .planner {
-  min-width: 1020px;
+  min-width: 1180px;
   display: grid;
-  grid-template-columns: 165px repeat(5, minmax(150px, 1fr));
+  grid-template-columns: 180px repeat(6, minmax(150px, 1fr));
 }
 .planner > div {
   border-right: 1px solid var(--border);
