@@ -4,6 +4,8 @@ Sistema estático de **Planejamento Operacional da Fiscalização de Materiais**
 
 **Aplicação:** [abrir o planejador](https://erwinklein94.github.io/Planejador-Operacional-Fiscalizacao-Qualidade/)
 
+**Aprenda a usar:** [guia prático em PDF](output/pdf/Guia-de-Uso-Planejador-Operacional.pdf), com nove páginas de instruções, exemplo de planejamento e dúvidas frequentes. O arquivo pode ser recriado com `python scripts/create_user_guide.py` (ReportLab).
+
 **Conceito:** demanda → risco → prioridade → capacidade → alocação → cobertura → resultado.
 
 ## Recursos
