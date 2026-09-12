@@ -135,7 +135,9 @@ export function initHelpTooltips() {
   tooltip.id = "concept-tooltip";
   tooltip.className = "help-tooltip";
   tooltip.setAttribute("role", "tooltip");
-  tooltip.hidden = true;
+  tooltip.setAttribute("popover", "manual");
+  const usePopover = typeof tooltip.showPopover === "function";
+  if (!usePopover) tooltip.hidden = true;
   document.body.append(tooltip);
   let active;
 
@@ -145,13 +147,24 @@ export function initHelpTooltips() {
       active.removeAttribute("aria-describedby");
     }
     active = undefined;
-    tooltip.hidden = true;
+    if (usePopover) {
+      if (tooltip.matches(":popover-open")) tooltip.hidePopover();
+    } else {
+      tooltip.hidden = true;
+      if (tooltip.parentElement !== document.body) document.body.append(tooltip);
+    }
   };
   const open = (trigger) => {
     if (!trigger?.dataset.helpText) return;
     active = trigger;
     tooltip.textContent = trigger.dataset.helpText;
-    tooltip.hidden = false;
+    if (usePopover) {
+      if (!tooltip.matches(":popover-open")) tooltip.showPopover();
+    } else {
+      const host = trigger.closest("dialog[open]") || document.body;
+      if (tooltip.parentElement !== host) host.append(tooltip);
+      tooltip.hidden = false;
+    }
     trigger.setAttribute("aria-expanded", "true");
     trigger.setAttribute("aria-describedby", tooltip.id);
     const rect = trigger.getBoundingClientRect();

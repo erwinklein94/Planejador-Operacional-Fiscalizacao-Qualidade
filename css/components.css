@@ -814,6 +814,11 @@ dialog .modal-subtitle {
   letter-spacing: normal;
   pointer-events: none;
 }
+.help-tooltip[popover] {
+  inset: auto;
+  margin: 0;
+  border: 0;
+}
 .help-tooltip[hidden] {
   display: none;
 }
