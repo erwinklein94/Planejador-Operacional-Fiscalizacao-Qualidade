@@ -122,6 +122,9 @@ test("escala histórica permanece consultável sem gerar alerta vencido", () => 
     alerts(s, s.seedWeek).some((item) => item.demandId === historical.id),
     false,
   );
+  s.demands.forEach((demand) => (demand.status = "Escala histórica"));
+  s.inspectors.forEach((inspector) => (inspector.active = false));
+  assert.equal(metrics(s, s.seedWeek).deficit, 0);
 });
 test("férias e administrativo descontam capacidade sem descontar inspeções duas vezes", () => {
   const s = seed();

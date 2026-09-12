@@ -116,6 +116,9 @@ export function metrics(state, week, subset) {
     0,
   );
   const required = demands.reduce((sum, d) => sum + d.requiredHours, 0);
+  const operationalRequired = demands
+    .filter((d) => d.status !== "Escala histórica")
+    .reduce((sum, d) => sum + d.requiredHours, 0);
   const covered = demands.reduce(
     (sum, d) => sum + demandAllocated(d, state, week),
     0,
@@ -129,7 +132,7 @@ export function metrics(state, week, subset) {
     covered,
     executed,
     uncovered: required - covered,
-    deficit: Math.max(0, required - capacity),
+    deficit: Math.max(0, operationalRequired - capacity),
     coverage: required ? (covered / required) * 100 : null,
     repressedForecast: required
       ? ((required - covered) / required) * 100
