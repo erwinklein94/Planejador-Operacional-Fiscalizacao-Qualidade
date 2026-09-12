@@ -3,6 +3,7 @@ import { dateLabel } from "../utils/dates.js";
 import { riskLevel, demandRisk } from "../utils/risk.js";
 import { coverage } from "../utils/planning.js";
 import { icon } from "../js/icons.js";
+import { helpFor, labelWithHelp } from "../js/help.js";
 export const entityName = (state, collection, id) =>
   state[collection].find((x) => x.id === id)?.name || "Não informado";
 export const badge = (text, tone = "neutral") =>
@@ -31,7 +32,7 @@ export function progress(value, color = "var(--blue)") {
   return `<div class="thin-progress" role="progressbar" aria-label="Cobertura" aria-valuenow="${n}" aria-valuemin="0" aria-valuemax="100"><span style="width:${n}%;background:${color}"></span></div>`;
 }
 export function metricCard(title, value, unit, foot, glyph, style = "") {
-  return `<article class="metric-card ${style}"><div class="metric-top"><span>${title}</span><span class="metric-icon">${icon(glyph)}</span></div><div class="metric-value"><strong>${value}</strong><span>${unit}</span></div><div class="metric-foot">${foot}</div></article>`;
+  return `<article class="metric-card ${style}"><div class="metric-top"><span>${labelWithHelp(title)}</span><span class="metric-icon">${icon(glyph)}</span></div><div class="metric-value"><strong>${value}</strong><span>${unit}${unit === "fiscal-dias" ? helpFor("Fiscal-dia") : ""}</span></div><div class="metric-foot">${foot}</div></article>`;
 }
 export function coreMetrics(m, state) {
   const h = state.settings.hoursPerDay;
@@ -53,7 +54,7 @@ export function demandTable(demands, state, week, compact = false) {
       "Nenhuma demanda neste recorte",
       "Ajuste a semana ou os filtros para consultar outros registros.",
     );
-  return `<div class="table-wrap"><table><thead><tr><th>Demanda / fornecedor</th>${compact ? "" : "<th>Material</th>"}<th>Prioridade</th><th>Prazo</th><th>${compact ? "Pendente" : "Cobertura"}</th><th></th></tr></thead><tbody>${demands
+  return `<div class="table-wrap"><table><thead><tr><th>Demanda / fornecedor</th>${compact ? "" : "<th>Material</th>"}<th>${labelWithHelp("Prioridade")}</th><th>Prazo</th><th>${compact ? labelWithHelp("Pendente", "Horas que ainda faltam para completar a cobertura da demanda.") : labelWithHelp("Cobertura")}</th><th></th></tr></thead><tbody>${demands
     .map((d) => {
       const risk = demandRisk(d, state);
       const c = coverage(d, state, week);

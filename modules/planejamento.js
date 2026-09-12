@@ -8,6 +8,7 @@ import {
   metrics,
 } from "../utils/planning.js";
 import { demandRisk } from "../utils/risk.js";
+import { helpFor } from "../js/help.js";
 import { heading, button, badge, avatar, entityName } from "./shared.js";
 export function renderPlanning(ctx) {
   const { state: s, week } = ctx;
@@ -20,7 +21,7 @@ export function renderPlanning(ctx) {
     "Quinta-feira",
     "Sexta-feira",
   ];
-  return `${heading(ctx.route === "escala" ? "Escala de fiscais" : "Planejamento semanal", `${weekLabel(week)} · Selecione uma atividade para consultar ou alterar a alocação.`, `${button("Disponibilidade", "availability", "", "calendar")}${button("Sugerir alocação", "suggest-next", "primary", "spark")}`)}<div class="section-title"><div class="flex">${badge(`${m.uncoveredDemands.length} demandas sem cobertura completa`, m.uncoveredDemands.length ? "danger" : "success")}${badge(`${num(m.deficit / s.settings.hoursPerDay)} fiscal-dias de déficit`, m.deficit ? "orange" : "neutral")}</div><div class="flex">${button("Semana anterior", "week-prev", "small", "calendar")}${button("Próxima semana", "week-next", "small", "calendar")}</div></div><section class="panel flush"><div class="planner-wrap"><div class="planner"><div class="day-head"><strong>Equipe de fiscalização</strong>Carga utilizada / disponível</div>${days.map((day, i) => `<div class="day-head"><strong>${names[i]}</strong>${dateLabel(day)}</div>`).join("")}${s.inspectors
+  return `${heading(ctx.route === "escala" ? "Escala de fiscais" : "Planejamento semanal", `${weekLabel(week)} · Selecione uma atividade para consultar ou alterar a alocação.`, `${button("Disponibilidade", "availability", "", "calendar")}${button("Sugerir alocação", "suggest-next", "primary", "spark")}`)}<div class="section-title"><div class="flex"><span>${badge(`${m.uncoveredDemands.length} demandas sem cobertura completa`, m.uncoveredDemands.length ? "danger" : "success")}${helpFor("Cobertura")}</span><span>${badge(`${num(m.deficit / s.settings.hoursPerDay)} fiscal-dias de déficit`, m.deficit ? "orange" : "neutral")}${helpFor("Déficit de capacidade")}</span></div><div class="flex">${button("Semana anterior", "week-prev", "small", "calendar")}${button("Próxima semana", "week-next", "small", "calendar")}</div></div><section class="panel flush"><div class="planner-wrap"><div class="planner"><div class="day-head"><strong>Equipe de fiscalização</strong>Carga utilizada / disponível</div>${days.map((day, i) => `<div class="day-head"><strong>${names[i]}</strong>${dateLabel(day)}</div>`).join("")}${s.inspectors
     .filter((f) => f.active)
     .map(
       (f) =>
@@ -47,5 +48,5 @@ export function renderPlanning(ctx) {
     )
     .join(
       "",
-    )}</div></div><div class="planner-legend"><span>${badge("Crítico", "danger")}</span><span>${badge("Alto", "orange")}</span><span>${badge("Moderado", "warning")}</span><span>${badge("Baixo", "success")}</span><span>Planejamento em horas · ${s.settings.hoursPerDay} h = 1 fiscal-dia</span></div></section><div class="notice">As demandas permanecem na semana da data necessária. Para mudar uma demanda de semana, use “Reprogramar” e registre o motivo. As alocações anteriores ficam no histórico.</div>`;
+    )}</div></div><div class="planner-legend"><span>${badge("Crítico", "danger")}</span><span>${badge("Alto", "orange")}</span><span>${badge("Moderado", "warning")}</span><span>${badge("Baixo", "success")}</span><span>Planejamento em horas · ${s.settings.hoursPerDay} h = 1 fiscal-dia ${helpFor("Fiscal-dia")}</span></div></section><div class="notice">As demandas permanecem na semana da data necessária. Para mudar uma demanda de semana, use “Reprogramar” e registre o motivo. As alocações anteriores ficam no histórico.</div>`;
 }

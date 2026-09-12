@@ -19,6 +19,7 @@ import {
   empty,
   paginate,
 } from "./shared.js";
+import { labelWithHelp } from "../js/help.js";
 const queryMatches = (record, q, extra = "") =>
   !q ||
   normalize(
@@ -138,7 +139,7 @@ export function renderSuppliers(ctx) {
     2: "Nível 2 · Dirigida",
     3: "Nível 3 · Amostragem",
   };
-  return `${heading("Fornecedores", "Acompanhe o risco e direcione a fiscalização de cada unidade.", button("Novo fornecedor", "new-suppliers", "primary", "plus"))}${filters(ctx, { risk: true, placeholder: "Buscar fornecedor, unidade, cidade ou UF…" })}<section class="panel flush"><div class="table-wrap"><table><thead><tr><th>Fornecedor / unidade</th><th>Materiais</th><th>Score de risco</th><th>Regime</th><th>Última inspeção</th><th></th></tr></thead><tbody>${page.items
+  return `${heading("Fornecedores", "Acompanhe o risco e direcione a fiscalização de cada unidade.", button("Novo fornecedor", "new-suppliers", "primary", "plus"))}${filters(ctx, { risk: true, placeholder: "Buscar fornecedor, unidade, cidade ou UF…" })}<section class="panel flush"><div class="table-wrap"><table><thead><tr><th>Fornecedor / unidade</th><th>Materiais</th><th>${labelWithHelp("Score de risco")}</th><th>${labelWithHelp("Regime")}</th><th>Última inspeção</th><th></th></tr></thead><tbody>${page.items
     .map((f) => {
       const risk = supplierRisk(f, s);
       return `<tr><td><button class="table-link table-main" data-action="supplier-detail" data-id="${f.id}">${esc(f.name)}</button><span class="table-sub">${esc(f.unit)} · ${esc(f.city)} / ${esc(f.uf)}</span>${!f.active ? badge("Inativo") : ""}</td><td>${f.materialIds.map((id) => `<span class="table-sub">${esc(entityName(s, "materials", id))}</span>`).join("")}</td><td><span class="score">${risk.score}<small>/ 100</small></span><br>${badge(risk.label, risk.tone)}</td><td>${badge(regimes[f.regimeOverride || risk.regime], risk.tone)}${f.regimeOverride ? '<span class="table-sub">Ajuste manual local</span>' : ""}</td><td>${dateLabel(f.lastInspection)}</td><td>${button("Editar", "edit-suppliers", "small", "edit", `data-id="${f.id}"`)}</td></tr>`;
@@ -150,7 +151,7 @@ export function renderSuppliers(ctx) {
 export function renderMaterials(ctx) {
   const s = ctx.state;
   const records = filterItems(s.materials, ctx, "materials");
-  return `${heading("Materiais", "Defina as famílias de materiais e a criticidade utilizada na priorização.", button("Novo material", "new-materials", "primary", "plus"))}${filters(ctx, { material: false })}<section class="panel flush"><div class="table-wrap"><table><thead><tr><th>Material</th><th>Criticidade</th><th>Fiscais habilitados</th><th>Fornecedores</th><th>Status</th><th></th></tr></thead><tbody>${records.map((m) => `<tr><td><strong class="table-main">${esc(m.name)}</strong><span class="table-sub">${esc(m.description)}</span></td><td>${m.criticality} / 20</td><td>${s.inspectors.filter((f) => f.active && f.materialIds.includes(m.id)).length}</td><td>${s.suppliers.filter((f) => f.active && f.materialIds.includes(m.id)).length}</td><td>${badge(m.active ? "Ativo" : "Inativo", m.active ? "success" : "neutral")}</td><td>${button("Editar", "edit-materials", "small", "edit", `data-id="${m.id}"`)}</td></tr>`).join("")}</tbody></table></div>${!records.length ? empty("Nenhum material encontrado") : ""}</section>`;
+  return `${heading("Materiais", "Defina as famílias de materiais e a criticidade utilizada na priorização.", button("Novo material", "new-materials", "primary", "plus"))}${filters(ctx, { material: false })}<section class="panel flush"><div class="table-wrap"><table><thead><tr><th>Material</th><th>${labelWithHelp("Criticidade", "Risco padrão do material, de 0 a 20, usado para calcular a prioridade das demandas.")}</th><th>Fiscais habilitados</th><th>Fornecedores</th><th>Status</th><th></th></tr></thead><tbody>${records.map((m) => `<tr><td><strong class="table-main">${esc(m.name)}</strong><span class="table-sub">${esc(m.description)}</span></td><td>${m.criticality} / 20</td><td>${s.inspectors.filter((f) => f.active && f.materialIds.includes(m.id)).length}</td><td>${s.suppliers.filter((f) => f.active && f.materialIds.includes(m.id)).length}</td><td>${badge(m.active ? "Ativo" : "Inativo", m.active ? "success" : "neutral")}</td><td>${button("Editar", "edit-materials", "small", "edit", `data-id="${m.id}"`)}</td></tr>`).join("")}</tbody></table></div>${!records.length ? empty("Nenhum material encontrado") : ""}</section>`;
 }
 export function renderRnc(ctx) {
   const records = filterItems(ctx.state.rncs, ctx, "rncs");

@@ -2,6 +2,7 @@ import { esc } from "../utils/formatters.js";
 import { isoDate, addDays, monday } from "../utils/dates.js";
 import { DEMAND_STATUSES, RNC_STATUSES } from "./cadastros.js";
 import { showModal, closeModal, formError } from "../js/ui.js";
+import { helpFor } from "../js/help.js";
 export const ACTIVITY_TYPES = [
   "Inspeção",
   "Ensaio",
@@ -51,9 +52,9 @@ export function field(key, label, type = "text", options = {}) {
 }
 export function fieldHtml(f, value) {
   if (f.type === "section")
-    return `<div class="form-section">${esc(f.label)}</div>`;
+    return `<div class="form-section"><span>${esc(f.label)}</span>${helpFor(f.label, f.tooltip)}</div>`;
   if (f.type === "checkbox")
-    return `<div class="checks ${f.full ? "field full" : ""}"><label><input type="checkbox" name="${f.key}" ${value ? "checked" : ""}>${esc(f.label)}</label></div>`;
+    return `<div class="checks ${f.full ? "field full" : ""}"><label><input type="checkbox" name="${f.key}" ${value ? "checked" : ""}>${esc(f.label)}</label>${helpFor(f.label, f.tooltip)}</div>`;
   const attrs = `name="${f.key}" id="field-${f.key}" ${f.required ? "required" : ""} ${f.min !== undefined ? `min="${f.min}"` : ""} ${f.max !== undefined ? `max="${f.max}"` : ""} ${f.step ? `step="${f.step}"` : ""} ${f.readonly ? "readonly" : ""}`;
   let control;
   if (f.type === "select" || f.type === "multiple")
@@ -67,7 +68,7 @@ export function fieldHtml(f, value) {
     control = `<textarea ${attrs} maxlength="4000">${esc(value || "")}</textarea>`;
   else
     control = `<input type="${f.type}" ${attrs} value="${esc(value ?? "")}" ${f.type === "text" ? 'maxlength="250"' : ""}>`;
-  return `<label class="field ${f.full ? "full" : ""}" for="field-${f.key}">${esc(f.label)}${f.required ? " *" : ""}${control}${f.help ? `<small>${esc(f.help)}</small>` : ""}</label>`;
+  return `<div class="field ${f.full ? "full" : ""}"><div class="field-label-row"><label for="field-${f.key}">${esc(f.label)}${f.required ? " *" : ""}</label>${helpFor(f.label, f.tooltip)}</div>${control}${f.help ? `<small>${esc(f.help)}</small>` : ""}</div>`;
 }
 export function showForm(title, subtitle, fields, values, save, extra = "") {
   const dialog = showModal(

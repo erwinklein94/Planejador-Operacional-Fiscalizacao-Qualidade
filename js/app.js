@@ -2,6 +2,7 @@ import { storageService } from "../services/storageService.js";
 import { authService } from "../services/authService.js";
 import { readRoute } from "./router.js";
 import { icon } from "./icons.js";
+import { initHelpTooltips } from "./help.js";
 import { esc, initials, download } from "../utils/formatters.js";
 import {
   monday,
@@ -103,6 +104,7 @@ let collapsed = false,
 let loadVersion = 0;
 let routeWork = Promise.resolve();
 const root = document.querySelector("#app");
+initHelpTooltips();
 const editorRoutes = new Set(["configuracoes", "auditoria"]);
 const editorActions = new Set([
   "suggest-demand",

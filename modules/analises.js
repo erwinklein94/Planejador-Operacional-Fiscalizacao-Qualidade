@@ -8,6 +8,7 @@ import {
   coverage,
 } from "../utils/planning.js";
 import { demandRisk, supplierRisk, WEIGHT_LABELS } from "../utils/risk.js";
+import { helpFor, labelWithHelp } from "../js/help.js";
 import {
   heading,
   button,
@@ -43,7 +44,7 @@ export function renderCoverage(ctx) {
             name: uf || "UF não informada",
             demands: demands.filter((d) => d.uf === uf),
           }));
-  return `${heading("Cobertura da fiscalização", "Veja quais riscos estão protegidos e quais continuam sem recursos.", `${button("Registrar fotografia", "snapshot", "", "history")}${button("Resumo semanal", "report", "primary", "download")}`)}${coreMetrics(m, s)}<div class="notice ${m.uncovered ? "warn" : ""}"><strong>${num(m.uncovered / s.settings.hoursPerDay)} fiscal-dias sem cobertura</strong> · Demanda reprimida prevista: ${m.repressedForecast === null ? "sem demanda" : pct(m.repressedForecast)}. O déficit compara demanda e capacidade; a lacuna de cobertura considera as alocações aprovadas.</div><section class="panel"><div class="section-title"><h2>Distribuição da cobertura</h2><span class="muted">${weekLabel(ctx.week)}</span></div><div class="tabs">${[
+  return `${heading("Cobertura da fiscalização", "Veja quais riscos estão protegidos e quais continuam sem recursos.", `${button("Registrar fotografia", "snapshot", "", "history")}${button("Resumo semanal", "report", "primary", "download")}`)}${coreMetrics(m, s)}<div class="notice ${m.uncovered ? "warn" : ""}"><strong>${num(m.uncovered / s.settings.hoursPerDay)} fiscal-dias sem cobertura ${helpFor("Fiscal-dia")}</strong> · ${labelWithHelp("Demanda reprimida prevista")}: ${m.repressedForecast === null ? "sem demanda" : pct(m.repressedForecast)}. O déficit compara demanda e capacidade; a lacuna de cobertura considera as alocações aprovadas.</div><section class="panel"><div class="section-title"><h2>${labelWithHelp("Distribuição da cobertura")}</h2><span class="muted">${weekLabel(ctx.week)}</span></div><div class="tabs">${[
     ["material", "Por material"],
     ["supplier", "Por fornecedor"],
     ["region", "Por região"],
@@ -73,7 +74,7 @@ export function renderCoverage(ctx) {
               return `<div class="coverage-row"><span>${esc(g.name)}</span>${progress(gm.coverage)}<strong>${gm.coverage === null ? "—" : pct(gm.coverage)}</strong><span class="muted">${num(gm.covered / s.settings.hoursPerDay)} / ${num(gm.required / s.settings.hoursPerDay)} dias</span></div>`;
             })
             .join("") || empty("Nenhum registro disponível")
-  }</section><section class="panel flush spaced"><div class="section-title"><div><h2>Risco não coberto</h2><p>Demandas parciais permanecem nesta relação até a cobertura integral</p></div>${badge(`${m.uncoveredDemands.length} demandas`, "danger")}</div>${demandTable(
+  }</section><section class="panel flush spaced"><div class="section-title"><div><h2>${labelWithHelp("Risco não coberto")}</h2><p>Demandas parciais permanecem nesta relação até a cobertura integral</p></div>${badge(`${m.uncoveredDemands.length} demandas`, "danger")}</div>${demandTable(
     m.uncoveredDemands.sort(
       (a, b) => demandRisk(b, s).score - demandRisk(a, s).score,
     ),
@@ -87,7 +88,7 @@ export function coverageHistory(s) {
         "Ainda não há fotografias semanais",
         "Use “Registrar fotografia” para preservar os indicadores desta semana.",
       )
-    : `<div class="table-wrap"><table><thead><tr><th>Semana</th><th>Cobertura</th><th>Demanda / capacidade</th><th>Reprimida efetiva</th><th>Registro</th></tr></thead><tbody>${s.coverageHistory.map((h) => `<tr><td>${weekLabel(h.week)}</td><td>${h.coverage === null ? "—" : pct(h.coverage)}</td><td>${num(h.required / (h.hoursPerDay || 8))} / ${num(h.capacity / (h.hoursPerDay || 8))} dias</td><td>${h.repressedPercent === null ? "Semana aberta" : pct(h.repressedPercent)}</td><td>${new Date(h.timestamp).toLocaleString("pt-BR")}</td></tr>`).join("")}</tbody></table></div>`;
+    : `<div class="table-wrap"><table><thead><tr><th>Semana</th><th>${labelWithHelp("Cobertura")}</th><th>Demanda / capacidade</th><th>${labelWithHelp("Demanda reprimida efetiva")}</th><th>Registro</th></tr></thead><tbody>${s.coverageHistory.map((h) => `<tr><td>${weekLabel(h.week)}</td><td>${h.coverage === null ? "—" : pct(h.coverage)}</td><td>${num(h.required / (h.hoursPerDay || 8))} / ${num(h.capacity / (h.hoursPerDay || 8))} dias</td><td>${h.repressedPercent === null ? "Semana aberta" : pct(h.repressedPercent)}</td><td>${new Date(h.timestamp).toLocaleString("pt-BR")}</td></tr>`).join("")}</tbody></table></div>`;
 }
 export function renderRisk(ctx) {
   const s = ctx.state;
@@ -134,12 +135,12 @@ export function renderHistory(ctx) {
 }
 export function renderSettings(ctx) {
   const s = ctx.state;
-  return `${heading("Configurações", "Parâmetros de planejamento, pesos de risco e gestão da base compartilhada no Supabase.")}<div class="settings-grid"><section class="panel"><h2>Parâmetros da operação</h2><form id="settings-form"><label class="field">Editor responsável<input name="userName" readonly maxlength="160" value="${esc(ctx.profile.full_name)}"></label><div class="form-grid"><label class="field">Jornada de um fiscal-dia (h)<input name="hoursPerDay" type="number" min="1" max="12" step=".5" required value="${s.settings.hoursPerDay}"><small>Alocações são salvas em horas.</small></label><label class="field">Meta de cobertura (%)<input name="coverageTarget" type="number" min="0" max="100" required value="${s.settings.coverageTarget}"></label></div><h3 class="spaced">Pesos do score de prioridade</h3><p class="muted">Os sete componentes devem somar 100 pontos.</p><div class="form-grid">${Object.entries(
+  return `${heading("Configurações", "Parâmetros de planejamento, pesos de risco e gestão da base compartilhada no Supabase.")}<div class="settings-grid"><section class="panel"><h2>Parâmetros da operação</h2><form id="settings-form"><div class="field"><div class="field-label-row"><label for="settings-user">Editor responsável</label>${helpFor("Editor responsável")}</div><input id="settings-user" name="userName" readonly maxlength="160" value="${esc(ctx.profile.full_name)}"></div><div class="form-grid"><div class="field"><div class="field-label-row"><label for="settings-day">Jornada de um fiscal-dia (h)</label>${helpFor("Jornada de um fiscal-dia (h)")}</div><input id="settings-day" name="hoursPerDay" type="number" min="1" max="12" step=".5" required value="${s.settings.hoursPerDay}"><small>Alocações são salvas em horas.</small></div><div class="field"><div class="field-label-row"><label for="settings-coverage">Meta de cobertura (%)</label>${helpFor("Meta de cobertura (%)")}</div><input id="settings-coverage" name="coverageTarget" type="number" min="0" max="100" required value="${s.settings.coverageTarget}"></div></div><h3 class="spaced">${labelWithHelp("Score de prioridade", "Os pesos definem quanto cada componente pode contribuir para a pontuação final da demanda.")} · pesos</h3><p class="muted">Os sete componentes devem somar 100 pontos.</p><div class="form-grid">${Object.entries(
     WEIGHT_LABELS,
   )
     .map(
       ([key, name]) =>
-        `<label class="field">${name}<input name="weight-${key}" type="number" min="0" max="100" required value="${s.settings.weights[key]}"></label>`,
+        `<div class="field"><div class="field-label-row"><label for="weight-${key}">${name}</label>${helpFor(name)}</div><input id="weight-${key}" name="weight-${key}" type="number" min="0" max="100" required value="${s.settings.weights[key]}"></div>`,
     )
     .join(
       "",

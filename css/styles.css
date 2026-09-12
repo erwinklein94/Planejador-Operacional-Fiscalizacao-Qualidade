@@ -720,6 +720,10 @@ textarea:focus-visible {
   .mobile-week {
     display: none !important;
   }
+  .help-tip,
+  .help-tooltip {
+    display: none !important;
+  }
   .app-shell {
     padding: 0;
   }
